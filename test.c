@@ -1,7 +1,7 @@
 #include<stdio.h>
 
 int main(){
-    int a = 1;
+      int a = 1;
     int *p_a = &a;
     int **pp_a = &p_a;
     printf("変数aのアドレスは%d\n",a);
