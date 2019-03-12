@@ -12,23 +12,28 @@
 // the screen should remain fully clear as long as no key is pressed.
 
 // Put your code here.
+  @8192
+  D=A
+  @count
+  M=D
 (LOOP)
   @KBD
   D=M
   @OFF
   D;JEQ
-  @SCREEN
-  D=A
   @i
-  M=D
+  M=0
 (ONLOOP)
+  @i
+  D=M
   @SCREEN
-  M=1
+  A=A+D
+  M=-1
   @i
   M=M+1
   D=M
-  @512
-  D=A-D
+  @count
+  D=M-D
   @ONLOOP
   D;JGT
   @TOPJ
