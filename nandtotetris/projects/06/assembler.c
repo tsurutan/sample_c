@@ -9,7 +9,7 @@
 #define L_COMMAND 2
 
 typedef struct _symbol {
-  char *key;
+  char key[BUFFER];
   int address;
 } Symbol;
 
@@ -18,20 +18,70 @@ void parse_label(char *line, char *output);
 int parse_command_type(char *line);
 int parse_a_command(char *line, char *output);
 int parse_c_command(char *line, char *output);
+int parse_l_command(char *line, char *output);
 void parse_bin(int number, char *output);
 void parse_dest(char *line, char *output);
 void parse_comp(char *line, char *output);
 void parse_jump(char *line, char *output);
 void remove_space(char *line, char *output);
 int check_ignore(char *line);
+int parse_symbol_address(char *line);
 
-Symbol *symbols[BUFFER];
+Symbol symbols[BUFFER];
 int line_count = 0;
+int symbol_count = 22;
+int label_address = 16;
 
 int main(int argc, char **argv) {
   char *filepath = argv[1];
   char buf[BUFFER], output[BUFFER];
   FILE *in_f, *out_f;
+  strcpy(symbols[0].key, "SP");
+  symbols[0].address = 0;
+  strcpy(symbols[1].key, "LCL");
+  symbols[1].address = 1;
+  strcpy(symbols[2].key, "ARG");
+  symbols[2].address = 2;
+  strcpy(symbols[3].key, "THIS");
+  symbols[3].address = 3;
+  strcpy(symbols[4].key, "THAT");
+  symbols[4].address = 4;
+  strcpy(symbols[5].key, "R0");
+  symbols[5].address = 0;
+  strcpy(symbols[6].key, "R1");
+  symbols[6].address = 1;
+  strcpy(symbols[7].key, "R2");
+  symbols[7].address = 2;
+  strcpy(symbols[8].key, "R3");
+  symbols[8].address = 3;
+  strcpy(symbols[9].key, "R4");
+  symbols[9].address = 4;
+  strcpy(symbols[10].key, "R5");
+  symbols[10].address = 5;
+  strcpy(symbols[11].key, "R6");
+  symbols[11].address = 6;
+  strcpy(symbols[12].key, "R7");
+  symbols[12].address = 7;
+  strcpy(symbols[13].key, "R8");
+  symbols[13].address = 8;
+  strcpy(symbols[14].key, "R9");
+  symbols[14].address = 9;
+  strcpy(symbols[15].key, "R10");
+  symbols[15].address = 10;
+  strcpy(symbols[16].key, "R11");
+  symbols[16].address = 11;
+  strcpy(symbols[17].key, "R12");
+  symbols[17].address = 12;
+  strcpy(symbols[18].key, "R13");
+  symbols[18].address = 13;
+  strcpy(symbols[19].key, "R14");
+  symbols[19].address = 14;
+  strcpy(symbols[20].key, "R15");
+  symbols[20].address = 15;
+  strcpy(symbols[21].key, "SCREEN");
+  symbols[21].address = 16384;
+  strcpy(symbols[22].key, "KBD");
+  symbols[22].address = 24576;
 
   if(argc == 1) { return 0; }
   in_f = fopen(filepath, "r");
@@ -43,6 +93,7 @@ int main(int argc, char **argv) {
   fseek(in_f, 0, SEEK_SET);
   while(fgets(buf, BUFFER, in_f) != NULL) {
     parser(buf, output);
+    if(output[0] == '\0') continue;
     fwrite(output, strlen(output), 1, out_f);
   }
   fclose(in_f);
@@ -52,14 +103,20 @@ int main(int argc, char **argv) {
 void parse_label(char *line, char *output) {
   char tmp[BUFFER];
   remove_space(line, tmp);
-  printf("comment removed = %s\n", tmp);
   if(check_ignore(tmp)) return;
-  if(*tmp == '(') {
+
+  printf("1st parse line = %s\n", tmp);
+  if(parse_command_type(tmp) == L_COMMAND) {
     char key[BUFFER];
     int tmp_len = strlen(tmp);
     sprintf(key, "%.*s", tmp_len - 2, tmp + 1);
+    strcpy(symbols[symbol_count].key, key);
+    symbols[symbol_count].address = line_count;
+    printf("key = %s address = %d\n", symbols[symbol_count].key, line_count);
+    symbol_count++;
+  } else {
+    line_count++;
   }
-  line_count++;
 }
 
 void parser(char *line, char *output) {
@@ -79,7 +136,7 @@ void parser(char *line, char *output) {
       printf("ccommand %s\n", output);
       break;
     case L_COMMAND:
-      printf("lcommand %s\n", tmp);
+      output[0] = '\0';
       break;
     deafult:
       break;
@@ -125,8 +182,33 @@ int parse_command_type(char *line) {
 
 int parse_a_command(char *line, char *output) {
   line++;
+  int parsed_number;
+  if(*line == '0') {
+    parsed_number = 0;
+  } else {
+    parsed_number = atoi(line);
+    if(parsed_number == 0) {
+      parsed_number = parse_symbol_address(line);
+    }
+  }
 
-  parse_bin(atoi(line), output);
+  parse_bin(parsed_number, output);
+}
+
+int parse_symbol_address(char *line) {
+  int has_symbol;
+  for(int index = 0; index < symbol_count; index++) {
+    if(strcmp(line, symbols[index].key) == 0) {
+      printf("symbol来たよ = %s address = %d\n", symbols[index].key, symbols[index].address);
+      return symbols[index].address;
+    }
+  }
+
+  strcpy(symbols[symbol_count].key, line);
+  symbols[symbol_count].address = label_address;
+  symbol_count++;
+  label_address++;
+  return symbols[symbol_count - 1].address;
 }
 
 int parse_c_command(char *line, char *output) {
@@ -153,7 +235,14 @@ int parse_c_command(char *line, char *output) {
   }
   line-=comp_pos;
   char tmp_comp[4];
-  strncpy(tmp_comp, line, comp_pos);
+  printf("parse comp = %s, pos = %d\n", line, comp_pos);
+  if(comp_pos == 1) {
+    tmp_comp[0] = line[0];
+    tmp_comp[1] = '\0';
+  } else {
+    strncpy(tmp_comp, line, comp_pos);
+  }
+  printf("parse comp = %s, pos = %d\n", tmp_comp, comp_pos);
   parse_comp(tmp_comp, o_comp);
   line+=comp_pos;
   while(*line != '\0') {
