@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BUFFER 512
+#define BUFFER 1024
 #define A_COMMAND 0
 #define C_COMMAND 1
 #define L_COMMAND 2
@@ -222,9 +222,10 @@ int parse_c_command(char *line, char *output) {
     line++;
     dest_pos++;
   }
+
   line-=dest_pos;
   if(has_dest) {
-    char tmp_dest[4];
+    char tmp_dest[4] = {'\0'};
     strncpy(tmp_dest, line, dest_pos);
     parse_dest(tmp_dest, o_dest);
     line+=dest_pos + 1;
@@ -234,7 +235,7 @@ int parse_c_command(char *line, char *output) {
     comp_pos++;
   }
   line-=comp_pos;
-  char tmp_comp[4];
+  char tmp_comp[4] = {'\0'};
   printf("parse comp = %s, pos = %d\n", line, comp_pos);
   if(comp_pos == 1) {
     tmp_comp[0] = line[0];
@@ -242,7 +243,6 @@ int parse_c_command(char *line, char *output) {
   } else {
     strncpy(tmp_comp, line, comp_pos);
   }
-  printf("parse comp = %s, pos = %d\n", tmp_comp, comp_pos);
   parse_comp(tmp_comp, o_comp);
   line+=comp_pos;
   while(*line != '\0') {
@@ -337,6 +337,7 @@ void parse_comp(char *line, char *output) {
   } else if (strcmp(line, "D|M") == 0) {
     strcpy(output, "1010101");
   }
+  printf("compt in = %s, out = %s\n", line, output);
 }
 
 void parse_dest(char *line, char *output) {
