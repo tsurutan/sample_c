@@ -32,18 +32,23 @@ void parse_push(char *input, char *output);
 void parse_pop(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
 void parse_compare(int arg1_index, char *compare, char *output);
-int parse_segment_base_address(char *arg1);
 void set_args(int arg1_index, int arg2_index, char *output);
 void set_sp(int sp_address, char *input, char *output);
+void set_segment(char *arg1, int position, char *output);
+void substitution(char *label, int value, char *output);
 
 int stack_address = 256;
 int label_index = 0;
 
+int base_pointer = 3;
 int base_temp = 5;
+int base_static = 16;
 int base_lcl = 300;
 int base_arg = 400;
 int base_this = 3000;
 int base_that = 3010;
+
+int tmp_register = 13;
 
 int main(int argc, char **argv) {
   char *filepath = argv[1];
@@ -56,15 +61,26 @@ int main(int argc, char **argv) {
   sprintf(output_file, "%s.asm", filepath);
   out_f = fopen(output_file, "w+");
 
+  substitution("LCL", base_lcl, output);
+  substitution("ARG", base_arg, output);
+  substitution("THIS", base_this, output);
+  substitution("THAT", base_that, output);
+  fwrite(output, strlen(output), 1, out_f);
   while(fgets(buf, BUFFER, in_f) != NULL) {
-    parser(buf, output);
-    if(output[0] == '\0') continue;
-    fwrite(output, strlen(output), 1, out_f);
+    char line_output[BUFFER] = {0};
+    parser(buf, line_output);
+    if(line_output[0] == '\0') continue;
+    fwrite(line_output, strlen(line_output), 1, out_f);
   }
   sprintf(output, "(END)\n@END\n0;JMP\n");
   fwrite(output, strlen(output), 1, out_f);
   fclose(in_f);
   fclose(out_f);
+}
+
+// Label = value;
+void substitution(char *label, int value, char *output) {
+  sprintf(output, "%s@%d\nD=A\n@%s\nM=D\n", output, value, label);
 }
 
 void parser(char *line, char *output) {
@@ -188,8 +204,8 @@ void parse_push(char *input, char *output) {
     sprintf(output, "@%s\nD=A\n@%d\nM=D\n", arg2, stack_address);
   } else {
     int position = atoi(arg2);
-    int base_address = parse_segment_base_address(arg1);
-    sprintf(output, "@%d\nD=M\n@%d\nM=D\n", (base_address + position), stack_address);
+    set_segment(arg1, position, output);
+    sprintf(output, "%s@%d\nA=M\nD=M\n@%d\nM=D\n", output, tmp_register,  stack_address);
   }
   stack_address++;
   set_sp(stack_address, output, output);
@@ -201,27 +217,32 @@ void parse_pop(char *input, char *output) {
   parse_arg1(input, arg1);
   parse_arg2(input, arg2);
   int position = atoi(arg2);
-  int base_address = parse_segment_base_address(arg1);
-  sprintf(output, "@%d\nD=M\n@%d\nM=D\n", top_stack, (base_address + position));
+  set_segment(arg1, position, output);
+  sprintf(output, "%s@%d\nD=M\n@%d\nA=M\nM=D\n", output, top_stack, tmp_register);
   stack_address--;
   set_sp(stack_address, output, output);
 }
-int parse_segment_base_address(char *arg1) {
+
+// memory[13]にセグメントアドレスを代入する
+void set_segment(char *arg1, int position, char *output) {
   if(strcmp("local", arg1) == 0) {
-    return base_lcl;
+    sprintf(output, "%s@%d\nD=A\n@%s\nD=D+M\n@%d\nM=D\n", output, position, "LCL", tmp_register);
   } else if (strcmp("argument", arg1) == 0) {
-    return base_arg;
+    sprintf(output, "%s@%d\nD=A\n@%s\nD=D+M\n@%d\nM=D\n", output, position, "ARG", tmp_register);
   } else if (strcmp("this", arg1) == 0) {
-    return base_this;
+    sprintf(output, "%s@%d\nD=A\n@%s\nD=D+M\n@%d\nM=D\n", output, position, "THIS", tmp_register);
   } else if (strcmp("that", arg1) == 0) {
-    return base_that;
+    sprintf(output, "%s@%d\nD=A\n@%s\nD=D+M\n@%d\nM=D\n", output, position, "THAT", tmp_register);
   } else if (strcmp("temp", arg1) == 0) {
-    return base_temp;
+    sprintf(output, "%s@%d\nD=A\n@%d\nM=D\n", output, (base_temp + position), tmp_register);
+  } else if (strcmp("pointer", arg1) == 0) {
+    sprintf(output, "%s@%d\nD=A\n@%d\nM=D\n", output, (base_pointer + position), tmp_register);
+  } else if (strcmp("static", arg1) == 0) {
+    sprintf(output, "%s@%d\nD=A\n@%d\nM=D\n", output, (base_static + position), tmp_register);
   } else {
     perror("PARSE POP ERROR");
     exit(2);
   }
-  return -1;
 }
 
 void parse_arithmetic(char *input, char *output) {
