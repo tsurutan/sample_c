@@ -30,9 +30,12 @@ void parse_arg2(char *line, char *output);
 
 void parse_push(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
+void parse_compare(int arg1_index, char *compare, char *output);
+void set_args(int arg1_index, int arg2_index, char *output);
 void set_sp(int sp_address, char *input, char *output);
 
 int stack_address = 256;
+int label_index = 0;
 
 int main(int argc, char **argv) {
   char *filepath = argv[1];
@@ -50,6 +53,8 @@ int main(int argc, char **argv) {
     if(output[0] == '\0') continue;
     fwrite(output, strlen(output), 1, out_f);
   }
+  sprintf(output, "(END)\n@END\n0;JMP\n");
+  fwrite(output, strlen(output), 1, out_f);
   fclose(in_f);
   fclose(out_f);
 }
@@ -176,15 +181,53 @@ void parse_push(char *input, char *output) {
 }
 
 void parse_arithmetic(char *input, char *output) {
-  if(strcmp("add", input) == 0) {
-    int top_stack = stack_address - 1;
-    int prev_stack = stack_address - 2;
-    sprintf(output, "@%d\nD=M\n@%d\nM=D+M\n", top_stack, prev_stack);
+  if(strcmp("neg", input) == 0) {
+    int arg1_index = stack_address - 1;
+    sprintf(output, "@%d\nM=-M\n", arg1_index);
+  } else if(strcmp("not", input) == 0) {
+    int arg1_index = stack_address - 1;
+    sprintf(output, "@%d\nM=!M\n", arg1_index);
+  } else {
+    int arg1_index = stack_address - 2;
+    int arg2_index = stack_address - 1;
+    set_args(arg1_index, arg2_index, output);
+    if(strcmp("add", input) == 0) {
+      sprintf(output, "%sM=D+M\n", output);
+    } else if(strcmp("sub", input) == 0) {
+      sprintf(output, "%sM=D-M\nM=-M\n", output);
+    } else if(strcmp("and", input) == 0) {
+      sprintf(output, "%sM=D&M\n", output);
+    } else if(strcmp("or", input) == 0) {
+      sprintf(output, "%sM=D|M\n", output);
+    } else if(strcmp("eq", input) == 0) {
+      parse_compare(arg1_index, "JEQ", output);
+    } else if(strcmp("lt", input) == 0) {
+      parse_compare(arg1_index, "JGT", output);
+    } else if(strcmp("gt", input) == 0) {
+      parse_compare(arg1_index, "JLT", output);
+    }
     stack_address--;
   }
   set_sp(stack_address, output, output);
 }
 
+void set_args(int arg1_index, int arg2_index, char *output) {
+  sprintf(output, "@%d\nD=M\n@%d\n", arg2_index, arg1_index);
+}
+
 void set_sp(int sp_address, char *input, char *output) {
   sprintf(output, "%s@%d\nD=A\n@SP\nM=D\n", input, sp_address);
+}
+
+void parse_compare(int arg1_index, char *compare, char *output) {
+  sprintf(output, "%sD=D-M\n@TRUE%d\nD;%s\n@%d\nM=0\n@END%d\n0;JMP\n(TRUE%d)\n@%d\nM=-1\n(END%d)\n",
+      output,
+      label_index,
+      compare,
+      arg1_index,
+      label_index,
+      label_index,
+      arg1_index,
+      label_index);
+  label_index++;
 }
