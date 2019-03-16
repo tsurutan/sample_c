@@ -29,13 +29,21 @@ void parse_arg1(char *line, char *output);
 void parse_arg2(char *line, char *output);
 
 void parse_push(char *input, char *output);
+void parse_pop(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
 void parse_compare(int arg1_index, char *compare, char *output);
+int parse_segment_base_address(char *arg1);
 void set_args(int arg1_index, int arg2_index, char *output);
 void set_sp(int sp_address, char *input, char *output);
 
 int stack_address = 256;
 int label_index = 0;
+
+int base_temp = 5;
+int base_lcl = 300;
+int base_arg = 400;
+int base_this = 3000;
+int base_that = 3010;
 
 int main(int argc, char **argv) {
   char *filepath = argv[1];
@@ -76,7 +84,8 @@ void parser(char *line, char *output) {
       printf("======C_PUSH======\n%s\n", output);
       break;
     case C_POP:
-      printf("C_POP = %s\n", tmp);
+      parse_pop(tmp, output);
+      printf("======C_POP======\n%s\n", output);
       break;
     case C_LABEL:
       printf("C_LABEL = %s\n", tmp);
@@ -131,6 +140,8 @@ int check_ignore(char *line) {
 int parse_command_type(char *line) {
   if(starts_with("push", line)) {
     return C_PUSH;
+  } else if(starts_with("pop", line)) {
+    return C_POP;
   } else {
     return C_ARITHMETIC;
   }
@@ -175,9 +186,42 @@ void parse_push(char *input, char *output) {
   printf("PUSH: input = %s, arg1 = %s, arg2 = %s\n", input, arg1, arg2);
   if(strcmp("constant", arg1) == 0) {
     sprintf(output, "@%s\nD=A\n@%d\nM=D\n", arg2, stack_address);
-    stack_address++;
+  } else {
+    int position = atoi(arg2);
+    int base_address = parse_segment_base_address(arg1);
+    sprintf(output, "@%d\nD=M\n@%d\nM=D\n", (base_address + position), stack_address);
   }
+  stack_address++;
   set_sp(stack_address, output, output);
+}
+
+void parse_pop(char *input, char *output) {
+  char arg1[BUFFER] = {'\0'}, arg2[BUFFER] = {'\0'};
+  int top_stack = stack_address - 1;
+  parse_arg1(input, arg1);
+  parse_arg2(input, arg2);
+  int position = atoi(arg2);
+  int base_address = parse_segment_base_address(arg1);
+  sprintf(output, "@%d\nD=M\n@%d\nM=D\n", top_stack, (base_address + position));
+  stack_address--;
+  set_sp(stack_address, output, output);
+}
+int parse_segment_base_address(char *arg1) {
+  if(strcmp("local", arg1) == 0) {
+    return base_lcl;
+  } else if (strcmp("argument", arg1) == 0) {
+    return base_arg;
+  } else if (strcmp("this", arg1) == 0) {
+    return base_this;
+  } else if (strcmp("that", arg1) == 0) {
+    return base_that;
+  } else if (strcmp("temp", arg1) == 0) {
+    return base_temp;
+  } else {
+    perror("PARSE POP ERROR");
+    exit(2);
+  }
+  return -1;
 }
 
 void parse_arithmetic(char *input, char *output) {
