@@ -119,7 +119,8 @@ void parser(char *line, char *output) {
       printf("======C_IF====\n%s", output);
       break;
     case C_FUNCTION:
-      printf("C_FUNCTION = %s\n", tmp);
+      parse_function(tmp, output);
+      printf("======C_FUNCTION====\n%s", output);
       break;
     case C_RETURN:
       printf("C_RETURN = %s\n", tmp);
@@ -170,6 +171,8 @@ int parse_command_type(char *line) {
     return C_IF;
   } else if(starts_with("goto", line)) {
     return C_GOTO;
+  } else if(starts_with("function", line)) {
+    return C_FUNCTION;
   } else {
     return C_ARITHMETIC;
   }
@@ -205,6 +208,10 @@ void parse_arg2(char *line, char *output) {
     output_index++;
   }
   output[output_index] = '\0';
+}
+
+void parse_functio
+n(char *input, char *output) {
 }
 
 void parse_label(char *input, char *output) {
