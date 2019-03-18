@@ -32,6 +32,7 @@ void parse_push(char *input, char *output);
 void parse_pop(char *input, char *output);
 void parse_label(char *input, char *output);
 void parse_if(char *input, char *output);
+void parse_goto(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
 void parse_compare(int arg1_index, char *compare, char *output);
 void set_args(int arg1_index, int arg2_index, char *output);
@@ -110,7 +111,8 @@ void parser(char *line, char *output) {
       printf("======C_LABEL====\n%s", output);
       break;
     case C_GOTO:
-      printf("C_GOTO = %s\n", tmp);
+      parse_goto(tmp, output);
+      printf("======C_GOTO====\n%s", output);
       break;
     case C_IF:
       parse_if(tmp, output);
@@ -166,6 +168,8 @@ int parse_command_type(char *line) {
     return C_LABEL;
   } else if(starts_with("if-goto", line)) {
     return C_IF;
+  } else if(starts_with("goto", line)) {
+    return C_GOTO;
   } else {
     return C_ARITHMETIC;
   }
@@ -207,6 +211,12 @@ void parse_label(char *input, char *output) {
   char arg1[BUFFER] = {'\0'};
   parse_arg1(input, arg1);
   sprintf(output, "(%s)\n", arg1);
+}
+
+void parse_goto(char *input, char *output) {
+  char arg1[BUFFER] = {'\0'};
+  parse_arg1(input, arg1);
+  sprintf(output, "@%s\n0;JMP\n", arg1);
 }
 
 void parse_if(char *input, char *output) {
