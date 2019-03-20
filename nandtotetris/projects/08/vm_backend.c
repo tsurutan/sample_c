@@ -34,13 +34,17 @@ void parse_label(char *input, char *output);
 void parse_if(char *input, char *output);
 void parse_goto(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
-void parse_compare(int arg1_index, char *compare, char *output);
+void parse_compare(char *compare, char *output);
+void parse_function(char *input, char *output);
+void parse_return(char *input, char *output);
 void set_args(int arg1_index, int arg2_index, char *output);
 void set_sp(int sp_address, char *input, char *output);
 void set_segment(char *arg1, int position, char *output);
 void substitution(char *label, int value, char *output);
+void pop(char *output);
+void pop_with_m(char *output);
+void push(char *output);
 
-int stack_address = 256;
 int label_index = 0;
 
 int base_pointer = 3;
@@ -64,11 +68,11 @@ int main(int argc, char **argv) {
   sprintf(output_file, "%s.asm", filepath);
   out_f = fopen(output_file, "w+");
 
-  substitution("LCL", base_lcl, output);
-  substitution("ARG", base_arg, output);
-  substitution("THIS", base_this, output);
-  substitution("THAT", base_that, output);
-  fwrite(output, strlen(output), 1, out_f);
+  /* substitution("LCL", base_lcl, output); */
+  /* substitution("ARG", base_arg, output); */
+  /* substitution("THIS", base_this, output); */
+  /* substitution("THAT", base_that, output); */
+  /* fwrite(output, strlen(output), 1, out_f); */
   while(fgets(buf, BUFFER, in_f) != NULL) {
     char line_output[BUFFER] = {0};
     parser(buf, line_output);
@@ -210,8 +214,18 @@ void parse_arg2(char *line, char *output) {
   output[output_index] = '\0';
 }
 
-void parse_functio
-n(char *input, char *output) {
+void parse_function(char *input, char *output) {
+  char arg1[BUFFER] = {'\0'}, arg2[BUFFER] = {'\0'};
+  parse_arg1(input, arg1);
+  parse_arg2(input, arg2);
+  sprintf(output, "(%s)\n", arg1);
+  for(int i = 0; i < atoi(arg2); i++) {
+    sprintf(output, "%s@LCL\nD=M\n@%d\nA=D+A\nM=0\n", output, i);
+  }
+}
+
+void parse_return(char *output) {
+  sprintf(output, "%s@LCL\nD=M\n@%d\nM=D\nM=0\n", tmp_register);
 }
 
 void parse_label(char *input, char *output) {
@@ -229,8 +243,21 @@ void parse_goto(char *input, char *output) {
 void parse_if(char *input, char *output) {
   char arg1[BUFFER] = {'\0'};
   parse_arg1(input, arg1);
-  sprintf(output, "@%d\nD=M\n@%s\nD;JNE\n", stack_address - 1, arg1);
-  stack_address--;
+  pop(output);
+  sprintf(output, "%s@%s\nD;JNE\n", output, arg1);
+}
+
+void pop(char *output) {
+  sprintf(output, "%s@SP\nM=M-1\nA=M\nD=M\n", output);
+}
+
+void pop_with_m(char *output) {
+  sprintf(output, "%s@SP\nM=M-1\nA=M\n", output);
+}
+
+// すでにDに値が入っているとする
+void push(char *output) {
+  sprintf(output, "%s@SP\nA=M\nM=D\n@SP\nM=M+1\n", output);
 }
 
 void parse_push(char *input, char *output) {
@@ -239,26 +266,23 @@ void parse_push(char *input, char *output) {
   parse_arg2(input, arg2);
   printf("PUSH: input = %s, arg1 = %s, arg2 = %s\n", input, arg1, arg2);
   if(strcmp("constant", arg1) == 0) {
-    sprintf(output, "@%s\nD=A\n@%d\nM=D\n", arg2, stack_address);
+    sprintf(output, "@%s\nD=A\n", arg2);
   } else {
     int position = atoi(arg2);
     set_segment(arg1, position, output);
-    sprintf(output, "%s@%d\nA=M\nD=M\n@%d\nM=D\n", output, tmp_register,  stack_address);
+    sprintf(output, "%s@%d\nA=M\nD=M\n", output, tmp_register);
   }
-  stack_address++;
-  set_sp(stack_address, output, output);
+  push(output);
 }
 
 void parse_pop(char *input, char *output) {
   char arg1[BUFFER] = {'\0'}, arg2[BUFFER] = {'\0'};
-  int top_stack = stack_address - 1;
   parse_arg1(input, arg1);
   parse_arg2(input, arg2);
   int position = atoi(arg2);
   set_segment(arg1, position, output);
-  sprintf(output, "%s@%d\nD=M\n@%d\nA=M\nM=D\n", output, top_stack, tmp_register);
-  stack_address--;
-  set_sp(stack_address, output, output);
+  pop(output);
+  sprintf(output, "%s@%d\nA=M\nM=D\n", output, tmp_register);
 }
 
 // memory[13]にセグメントアドレスを代入する
@@ -285,33 +309,36 @@ void set_segment(char *arg1, int position, char *output) {
 
 void parse_arithmetic(char *input, char *output) {
   if(strcmp("neg", input) == 0) {
-    int arg1_index = stack_address - 1;
-    sprintf(output, "@%d\nM=-M\n", arg1_index);
+    pop_with_m(output);
+    sprintf(output, "%sD=-M\n", output);
+    push(output);
   } else if(strcmp("not", input) == 0) {
-    int arg1_index = stack_address - 1;
-    sprintf(output, "@%d\nM=!M\n", arg1_index);
+    pop_with_m(output);
+    sprintf(output, "%sD=!M\n", output);
+    push(output);
   } else {
-    int arg1_index = stack_address - 2;
-    int arg2_index = stack_address - 1;
-    set_args(arg1_index, arg2_index, output);
+    pop(output);
+    pop_with_m(output);
     if(strcmp("add", input) == 0) {
-      sprintf(output, "%sM=D+M\n", output);
+      sprintf(output, "%sD=D+M\n", output);
+      push(output);
     } else if(strcmp("sub", input) == 0) {
-      sprintf(output, "%sM=D-M\nM=-M\n", output);
+      sprintf(output, "%sD=D-M\nD=-D\n", output);
+      push(output);
     } else if(strcmp("and", input) == 0) {
-      sprintf(output, "%sM=D&M\n", output);
+      sprintf(output, "%sD=D&M\n", output);
+      push(output);
     } else if(strcmp("or", input) == 0) {
-      sprintf(output, "%sM=D|M\n", output);
+      sprintf(output, "%sD=D|M\n", output);
+      push(output);
     } else if(strcmp("eq", input) == 0) {
-      parse_compare(arg1_index, "JEQ", output);
+      parse_compare("JEQ", output);
     } else if(strcmp("lt", input) == 0) {
-      parse_compare(arg1_index, "JGT", output);
+      parse_compare("JGT", output);
     } else if(strcmp("gt", input) == 0) {
-      parse_compare(arg1_index, "JLT", output);
+      parse_compare("JLT", output);
     }
-    stack_address--;
   }
-  set_sp(stack_address, output, output);
 }
 
 void set_args(int arg1_index, int arg2_index, char *output) {
@@ -323,15 +350,13 @@ void set_sp(int sp_address, char *input, char *output) {
 }
 
 // LT GTなどの比較
-void parse_compare(int arg1_index, char *compare, char *output) {
-  sprintf(output, "%sD=D-M\n@TRUE%d\nD;%s\n@%d\nM=0\n@END%d\n0;JMP\n(TRUE%d)\n@%d\nM=-1\n(END%d)\n",
+void parse_compare(char *compare, char *output) {
+  sprintf(output, "%sD=D-M\n@TRUE%d\nD;%s\n@SP\nA=M\nM=0\n@END%d\n0;JMP\n(TRUE%d)\n@SP\nA=M\nM=-1\n(END%d)\n@SP\nM=M+1\n",
       output,
       label_index,
       compare,
-      arg1_index,
       label_index,
       label_index,
-      arg1_index,
       label_index);
   label_index++;
 }

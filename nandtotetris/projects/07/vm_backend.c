@@ -259,7 +259,7 @@ void parse_arithmetic(char *input, char *output) {
     if(strcmp("add", input) == 0) {
       sprintf(output, "%sM=D+M\n", output);
     } else if(strcmp("sub", input) == 0) {
-      sprintf(output, "%sM=D-M\nM=-M\n", output);
+      sprintf(output, "%sM=D-M\n", output);
     } else if(strcmp("and", input) == 0) {
       sprintf(output, "%sM=D&M\n", output);
     } else if(strcmp("or", input) == 0) {
