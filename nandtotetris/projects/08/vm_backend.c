@@ -36,7 +36,7 @@ void parse_goto(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
 void parse_compare(char *compare, char *output);
 void parse_function(char *input, char *output);
-void parse_return(char *input, char *output);
+void parse_return(char *output);
 void set_args(int arg1_index, int arg2_index, char *output);
 void set_sp(int sp_address, char *input, char *output);
 void set_segment(char *arg1, int position, char *output);
@@ -127,7 +127,8 @@ void parser(char *line, char *output) {
       printf("======C_FUNCTION====\n%s", output);
       break;
     case C_RETURN:
-      printf("C_RETURN = %s\n", tmp);
+      parse_return(output);
+      printf("======C_RETURN====\n%s", output);
       break;
     case C_CALL:
       printf("C_CALL = %s\n", tmp);
@@ -177,6 +178,8 @@ int parse_command_type(char *line) {
     return C_GOTO;
   } else if(starts_with("function", line)) {
     return C_FUNCTION;
+  } else if(starts_with("return", line)) {
+    return C_RETURN;
   } else {
     return C_ARITHMETIC;
   }
@@ -225,7 +228,23 @@ void parse_function(char *input, char *output) {
 }
 
 void parse_return(char *output) {
-  sprintf(output, "%s@LCL\nD=M\n@%d\nM=D\nM=0\n", tmp_register);
+  // FRAME = LCL
+  sprintf(output, "%s@LCL\nD=M\n@%d\nM=D\n", output, tmp_register);
+  pop(output);
+  // *ARG = pop()
+  sprintf(output, "%s@ARG\nA=M\nM=D\n", output);
+  // SP = ARG + 1
+  sprintf(output, "%s@ARG\nD=M+1\n@SP\nM=D\n", output);
+  // THAT = *(FRAME - 1)
+  sprintf(output, "%s@%d\nA=M-1\nD=M\n@THAT\nM=D\n", output, tmp_register);
+  // THIS = *(FRAME - 2)
+  sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\nD=M\n@THIS\nM=D\n", output, 2, tmp_register);
+  // THIS = *(FRAME - 3)
+  sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\nD=M\n@ARG\nM=D\n", output, 3, tmp_register);
+  // LCL = *(FRAME - 4)
+  sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\nD=M\n@LCL\nM=D\n", output, 4, tmp_register);
+  // goto RET
+  sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\n0;JMP\n", output, 5, tmp_register);
 }
 
 void parse_label(char *input, char *output) {
