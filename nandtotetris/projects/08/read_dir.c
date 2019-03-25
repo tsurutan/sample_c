@@ -3,6 +3,7 @@
 #include <string.h>
 
 int end_with(char *pre, char *target);
+void parse_filename(char *path, char *output);
 
 int main (int argc, char **argv) {
   char *path;
@@ -10,6 +11,8 @@ int main (int argc, char **argv) {
   DIR *dir;
   path = argv[1];
   dir = opendir(path);
+  parse_filename(path, filename);
+  printf("filename = %s\n", filename);
   while ((dent = readdir(dir)) != NULL) {
     if(end_with("vm", dent->d_name)) {
       printf("%s\n", dent->d_name);

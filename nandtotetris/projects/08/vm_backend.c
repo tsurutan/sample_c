@@ -59,23 +59,40 @@ int base_that = 3010;
 
 int tmp_register = 13;
 
+void parse_filename(char *path, char *output) {
+  int offset = 0, j = 0;
+  for(int i = strlen(path); i > 0; i--) {
+    offset++;
+    if(path[i] == '/') break;
+  }
+  for(int i = strlen(path) - offset + 2; i < strlen(path); i++) {
+    output[j] = path[i];
+    j++;
+  }
+}
+
 int main(int argc, char **argv) {
   char *filepath = argv[1];
   char buf[BUFFER], output[BUFFER] = {0}, output_file[BUFFER];
   FILE *out_f;
 
   if(argc == 1) { return 0; }
-  /* filepath[strlen(filepath) - 3] = '\0'; */
-  sprintf(output_file, "%s.asm", filepath);
+  char filename[BUFFER] = {0};
+  parse_filename(filepath, filename);
+  sprintf(output_file, "%s/%s.asm", filepath, filename);
   out_f = fopen(output_file, "w+");
 
   substitution("SP", 256, output);
+  fwrite(output, strlen(output), 1, out_f);
+  char input[BUFFER] = "call Sys.init 0";
+  parser(input, output);
   fwrite(output, strlen(output), 1, out_f);
   struct dirent *dent;
   DIR *dir;
   dir = opendir(filepath);
   while ((dent = readdir(dir)) != NULL) {
     if(end_with("vm", dent->d_name)) {
+      char output[BUFFER] = {0}, buf[BUFFER] = {0};
       char new_path[BUFFER];
       sprintf(new_path, "%s/%s", filepath, dent->d_name);
       FILE *in_f;
@@ -89,8 +106,6 @@ int main(int argc, char **argv) {
       fclose(in_f);
     }
   }
-  sprintf(output, "(END)\n@END\n0;JMP\n");
-  fwrite(output, strlen(output), 1, out_f);
   fclose(out_f);
 }
 
