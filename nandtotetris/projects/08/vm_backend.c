@@ -36,9 +36,9 @@ void parse_goto(char *input, char *output);
 void parse_arithmetic(char *input, char *output);
 void parse_compare(char *compare, char *output);
 void parse_function(char *input, char *output);
+void parse_call(char *input, char *output);
 void parse_return(char *output);
 void set_args(int arg1_index, int arg2_index, char *output);
-void set_sp(int sp_address, char *input, char *output);
 void set_segment(char *arg1, int position, char *output);
 void substitution(char *label, int value, char *output);
 void pop(char *output);
@@ -131,7 +131,8 @@ void parser(char *line, char *output) {
       printf("======C_RETURN====\n%s", output);
       break;
     case C_CALL:
-      printf("C_CALL = %s\n", tmp);
+      parse_call(tmp, output);
+      printf("======C_CALL====\n%s", output);
       break;
     deafult:
       break;
@@ -180,6 +181,8 @@ int parse_command_type(char *line) {
     return C_FUNCTION;
   } else if(starts_with("return", line)) {
     return C_RETURN;
+  } else if(starts_with("call", line)) {
+    return C_CALL;
   } else {
     return C_ARITHMETIC;
   }
@@ -187,8 +190,12 @@ int parse_command_type(char *line) {
 
 int starts_with(char *pre, char *target) {
   size_t pre_size = strlen(pre), target_size = strlen(target);
+  /* printf("starts_with: pre_size = %zu, target_size = %zu\n", pre_size, target_size); */
+  /* printf("starts_with: pre = %s, target = %s\n", pre, target); */
   if(pre_size > target_size) return 0;
-  return strncmp(pre, target, pre_size) == 0 ? 1 : 0;
+  int result = strncmp(pre, target, pre_size) == 0 ? 1 : 0;
+  /* printf("starts_with: result = %d\n", result); */
+  return result;
 }
 
 void parse_arg1(char *line, char *output) {
@@ -225,6 +232,36 @@ void parse_function(char *input, char *output) {
   for(int i = 0; i < atoi(arg2); i++) {
     sprintf(output, "%s@LCL\nD=M\n@%d\nA=D+A\nM=0\n", output, i);
   }
+}
+
+void parse_call(char *input, char *output) {
+  char arg1[BUFFER] = {'\0'}, arg2[BUFFER] = {'\0'};
+  parse_arg1(input, arg1);
+  parse_arg2(input, arg2);
+  // push return-address
+  sprintf(output, "@return-%s\nD=A\n", arg1);
+  push(output);
+  // push LCL
+  sprintf(output, "%s@LCL\nD=M\n", output);
+  push(output);
+  // push ARG
+  sprintf(output, "%s@ARG\nD=M\n", output);
+  push(output);
+  // push THIS
+  sprintf(output, "%s@THIS\nD=M\n", output);
+  push(output);
+  // push THAT
+  sprintf(output, "%s@THAT\nD=M\n", output);
+  push(output);
+  // ARG = SP - n - 5
+  sprintf(output, "%s@%d\nD=A\n@%d\nD=D+A\n@SP\nD=D-M\nD=-D\n@ARG\nM=D\n", output, atoi(arg2), 5);
+  // LCL = SP
+  sprintf(output, "%s@SP\nD=M\n@LCL\nM=D\n", output);
+  // goto f
+  sprintf(output, "%s@%s\n0;JMP\n", output, arg1);
+  // (return-address)
+  sprintf(output, "%s(return-%s)\n", output, arg1);
+  label_index++;
 }
 
 void parse_return(char *output) {
@@ -338,23 +375,23 @@ void parse_arithmetic(char *input, char *output) {
   } else {
     pop(output);
     pop_with_m(output);
-    if(strcmp("add", input) == 0) {
+    if(starts_with("add", input)) {
       sprintf(output, "%sD=D+M\n", output);
       push(output);
-    } else if(strcmp("sub", input) == 0) {
+    } else if(starts_with("sub", input)) {
       sprintf(output, "%sD=D-M\nD=-D\n", output);
       push(output);
-    } else if(strcmp("and", input) == 0) {
+    } else if(starts_with("and", input)) {
       sprintf(output, "%sD=D&M\n", output);
       push(output);
-    } else if(strcmp("or", input) == 0) {
+    } else if(starts_with("or", input)) {
       sprintf(output, "%sD=D|M\n", output);
       push(output);
-    } else if(strcmp("eq", input) == 0) {
+    } else if(starts_with("eq", input)) {
       parse_compare("JEQ", output);
-    } else if(strcmp("lt", input) == 0) {
+    } else if(starts_with("lt", input)) {
       parse_compare("JGT", output);
-    } else if(strcmp("gt", input) == 0) {
+    } else if(starts_with("gt", input)) {
       parse_compare("JLT", output);
     }
   }
@@ -362,10 +399,6 @@ void parse_arithmetic(char *input, char *output) {
 
 void set_args(int arg1_index, int arg2_index, char *output) {
   sprintf(output, "@%d\nD=M\n@%d\n", arg2_index, arg1_index);
-}
-
-void set_sp(int sp_address, char *input, char *output) {
-  sprintf(output, "%s@%d\nD=A\n@SP\nM=D\n", input, sp_address);
 }
 
 // LT GTなどの比較
