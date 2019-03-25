@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 #define BUFFER 1024
 #define C_ARITHMETIC 0
@@ -25,6 +26,7 @@ void remove_space(char *line, char *output);
 int check_ignore(char *line);
 int parse_symbol_address(char *line);
 int starts_with(char *pre, char *target);
+int end_with(char *pre, char *target);
 void parse_arg1(char *line, char *output);
 void parse_arg2(char *line, char *output);
 
@@ -60,29 +62,47 @@ int tmp_register = 13;
 int main(int argc, char **argv) {
   char *filepath = argv[1];
   char buf[BUFFER], output[BUFFER] = {0}, output_file[BUFFER];
-  FILE *in_f, *out_f;
+  FILE *out_f;
 
   if(argc == 1) { return 0; }
-  in_f = fopen(filepath, "r");
-  filepath[strlen(filepath) - 3] = '\0';
+  /* filepath[strlen(filepath) - 3] = '\0'; */
   sprintf(output_file, "%s.asm", filepath);
   out_f = fopen(output_file, "w+");
 
-  /* substitution("LCL", base_lcl, output); */
-  /* substitution("ARG", base_arg, output); */
-  /* substitution("THIS", base_this, output); */
-  /* substitution("THAT", base_that, output); */
-  /* fwrite(output, strlen(output), 1, out_f); */
-  while(fgets(buf, BUFFER, in_f) != NULL) {
-    char line_output[BUFFER] = {0};
-    parser(buf, line_output);
-    if(line_output[0] == '\0') continue;
-    fwrite(line_output, strlen(line_output), 1, out_f);
+  substitution("SP", 256, output);
+  fwrite(output, strlen(output), 1, out_f);
+  struct dirent *dent;
+  DIR *dir;
+  dir = opendir(filepath);
+  while ((dent = readdir(dir)) != NULL) {
+    if(end_with("vm", dent->d_name)) {
+      char new_path[BUFFER];
+      sprintf(new_path, "%s/%s", filepath, dent->d_name);
+      FILE *in_f;
+      in_f = fopen(new_path, "r");
+      while(fgets(buf, BUFFER, in_f) != NULL) {
+        char line_output[BUFFER] = {0};
+        parser(buf, line_output);
+        if(line_output[0] == '\0') continue;
+        fwrite(line_output, strlen(line_output), 1, out_f);
+      }
+      fclose(in_f);
+    }
   }
   sprintf(output, "(END)\n@END\n0;JMP\n");
   fwrite(output, strlen(output), 1, out_f);
-  fclose(in_f);
   fclose(out_f);
+}
+
+int end_with(char *pre, char *target) {
+  size_t pre_size = strlen(pre), target_size = strlen(target);
+  /* printf("starts_with: pre_size = %zu, target_size = %zu\n", pre_size, target_size); */
+  /* printf("starts_with: pre = %s, target = %s\n", pre, target); */
+  if(pre_size > target_size) return 0;
+  /* printf("starts_with: result = %s\n", target + target_size - pre_size); */
+  int result = strncmp(pre, target + target_size - pre_size, pre_size) == 0 ? 1 : 0;
+  /* printf("starts_with: result = %d\n", result); */
+  return result;
 }
 
 // Label = value;
@@ -239,7 +259,7 @@ void parse_call(char *input, char *output) {
   parse_arg1(input, arg1);
   parse_arg2(input, arg2);
   // push return-address
-  sprintf(output, "@return-%s\nD=A\n", arg1);
+  sprintf(output, "@return-%s-%d\nD=A\n", arg1, label_index);
   push(output);
   // push LCL
   sprintf(output, "%s@LCL\nD=M\n", output);
@@ -260,7 +280,7 @@ void parse_call(char *input, char *output) {
   // goto f
   sprintf(output, "%s@%s\n0;JMP\n", output, arg1);
   // (return-address)
-  sprintf(output, "%s(return-%s)\n", output, arg1);
+  sprintf(output, "%s(return-%s-%d)\n", output, arg1, label_index);
   label_index++;
 }
 
@@ -281,7 +301,7 @@ void parse_return(char *output) {
   // LCL = *(FRAME - 4)
   sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\nD=M\n@LCL\nM=D\n", output, 4, tmp_register);
   // goto RET
-  sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\n0;JMP\n", output, 5, tmp_register);
+  sprintf(output, "%s@%d\nD=A\n@%d\nA=M-D\nA=M\n0;JMP\n", output, 5, tmp_register);
 }
 
 void parse_label(char *input, char *output) {
