@@ -4,6 +4,7 @@
 #include "JackTokenizer.h"
 #include "CompilationEngine.h"
 #include "SymbolTable.h"
+#include "VMWriter.h"
 #define BUFFER 1024
 
 void set_filename(char *path, char *output, char *suffix);
@@ -25,6 +26,8 @@ int main(int argc, char **argv) {
   fp_compile_input = fopen(filename, "r");
   set_filename(argv[1], filename, "Compiled.xml");
   fp_compile_output = fopen(filename, "w+");
+  set_filename(argv[1], filename, ".vm");
+  VMWriter__constructor(filename);
   CompilationEngine_constructor(fp_compile_input, fp_compile_output);
   fclose(fp_compile_input);
   fclose(fp_compile_output);

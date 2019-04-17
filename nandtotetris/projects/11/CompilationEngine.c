@@ -2,6 +2,7 @@
 #include <string.h>
 #include "CompilationEngine.h"
 #include "SymbolTable.h"
+#include "VMWriter.h"
 
 #define BUFFER 1024
 #define OPS_SIZE 9
@@ -11,16 +12,15 @@ FILE *fp_output;
 
 char ops[OPS_SIZE][BUFFER] = { "+", "-", "*", ">/<", "&amp;", "|", "&lt;", "&gt;", "=" };
 
+char class_name[BUFFER];
 void debug_print();
 void write_to(char *output) {
   fwrite(output, strlen(output), 1, fp_output);
-  printf("write = %s\n", output);
 }
 
 void back(char *back_text) {
   fseek(fp_input, -1 * strlen(back_text), SEEK_CUR);
 }
-
 void read_to(char *output) {
   fgets(output, BUFFER, fp_input);
   if(output[0] == '\0') exit(1);
@@ -75,7 +75,7 @@ void compile_class_var_dec(void) {
   write_to("<classVarDec>\n");
   read_value_to(kind); // static or field
   read_value_to(type); // type
-  read_value_to(name); // name
+  read_value_to(name); // identifier
   define(name, type, kind);
   while(1) {
     char buf[BUFFER] = { '\0' };
@@ -85,7 +85,9 @@ void compile_class_var_dec(void) {
       break;
     }
     write_to(buf);
-    write_self();
+    char second_name[BUFFER] = { '\0' };
+    read_value_to(second_name); // identifier
+    define(second_name, type, kind);
   }
   write_to("</classVarDec>\n");
 }
@@ -351,8 +353,9 @@ void compile_class(void) {
   printf("=====compile class=====\n");
   write_to("<class>\n");
   write_self();
+  read_value_to(class_name); // class name
   write_self();
-  write_self();
+  printf("class name = %s\n", class_name);
   while(1) {
     char buf[BUFFER] = { '\0' };
     read_to(buf);

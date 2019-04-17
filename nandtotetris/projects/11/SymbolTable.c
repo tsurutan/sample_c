@@ -54,8 +54,7 @@ void define(char *name, char *type, char *kind) {
     case STATIC:
       break;
     case FIELD:
-      printf("field name = %s, type = %s kind = %s ckind = %d field = %d\n", name, type, kind, convertedKind, FIELD);
-      exit(0);
+      printf("field name = %s, type = %s kind = %s ckind = %d\n", name, type, kind, convertedKind);
       break;
     case ARG:
       break;
