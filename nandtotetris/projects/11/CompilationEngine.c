@@ -12,6 +12,8 @@ FILE *fp_output;
 
 char ops[OPS_SIZE][BUFFER] = { "+", "-", "*", ">/<", "&amp;", "|", "&lt;", "&gt;", "=" };
 
+int if_label_index = 0;
+int while_label_index = 0;
 char subroutine_type[BUFFER] = { '\0' };
 char class_name[BUFFER];
 void debug_print();
@@ -96,16 +98,22 @@ void compile_class_var_dec(void) {
 int compile_parameter_list(int is_show) {
   printf("=====compile parameter list=====\n");
   write_to("<parameterList>\n");
-  int param_count = 0;
+  int param_count = 1;
   if(is_show) {
-    write_self(); // type
-    write_self(); // varName
+    char type_1[BUFFER] = { '\0' };
+    char var_name_1[BUFFER] = { '\0' };
+    read_value_to(type_1); // type
+    read_value_to(var_name_1); // varName
+    define(var_name_1, type_1, "argument");
     param_count += 1;
     while(1) {
       if(next_check(",")) {
         write_self(); // ,
-        write_self(); // type
-        write_self(); // varName
+        char type_2[BUFFER] = { '\0' };
+        char var_name_2[BUFFER] = { '\0' };
+        read_value_to(type_2); // type
+        read_value_to(var_name_2); // varName
+        define(var_name_2, type_2, "argument");
         param_count += 1;
       } else {
         break;
@@ -116,7 +124,8 @@ int compile_parameter_list(int is_show) {
   return param_count;
 }
 
-void compile_var_dec(char *line) {
+int compile_var_dec(char *line) {
+  int var_dec_count = 0;
   printf("=====compile var dec=====\n");
   char var_type[BUFFER] = { '\0' };
   write_to("<varDec>\n");
@@ -130,9 +139,12 @@ void compile_var_dec(char *line) {
     }
     if(strstr(buf, ",") == NULL) {
       define(buf, var_type, "var");
+      var_dec_count += 1;
+      printf("kitayo ==== %s count = %d \n", buf, var_dec_count);
     }
   }
   write_to("</varDec>\n");
+  return var_dec_count;
 }
 
 void compile_expression(void);
@@ -191,6 +203,8 @@ void compile_term() {
   write_to("<term>\n");
   char buf[BUFFER] = { '\0' };
   read_to(buf);
+  int is_negative = 0;
+  int is_not = 0;
   if(strstr(buf, "identifier")) {
     char next[BUFFER] = { '\0' };
     read_to(next);
@@ -204,7 +218,10 @@ void compile_term() {
       back(buf);
       compile_subroutine_call();
     } else {
-      write_to(buf); // varName
+      char var_name[BUFFER];
+      back(buf);
+      read_value_to(var_name); // varName
+      write_push_name(var_name);
     }
   } else {
     if(strstr(buf, "(")) {
@@ -212,6 +229,15 @@ void compile_term() {
       compile_expression();
       write_self(); // )
     } else if(strstr(buf, "-") || strstr(buf, "~")) {
+      char op_val[BUFFER] = { '\0' };
+      back(buf);
+      read_value_to(op_val);
+      printf("nega or not\n");
+      if(strstr(op_val, "-")) {
+        is_negative = 1;
+      } else if(strstr(op_val, "~")) {
+        is_not = 1;
+      }
       write_to(buf); // - or ~
       compile_term();
     } else {
@@ -219,11 +245,23 @@ void compile_term() {
       back(buf);
       read_value_to(constant_val);
       printf("constant = %s\n", constant_val);
-      write_push(S_CONST, constant_val);
+      if(strstr(constant_val, "true")) {
+        write_push(S_CONST, "-1");
+      } else if(strstr(constant_val, "false") || strstr(constant_val, "null")) {
+        write_push(S_CONST, "0");
+      } else {
+        printf("kitayo = %s\n", constant_val);
+        write_push(S_CONST, constant_val);
+      }
       write_to(buf); // integerConstant or keywordConstant or symbolConstant
     }
   }
   write_to("</term>\n");
+  if(is_negative) {
+    write_arithmetic("neg");
+  } else if(is_not) {
+    write_arithmetic("~");
+  }
   printf("=====compile term end=====\n");
 }
 
@@ -239,12 +277,11 @@ void compile_expression(void) {
     if(is_ops(buf)) {
       read_value_to(op);
       compile_term();
+      write_arithmetic(op);
     } else {
       break;
     }
   }
-  printf("op = %s\n", op);
-  write_arithmetic(op);
   write_to("</expression>\n");
 }
 
@@ -254,7 +291,7 @@ void compile_do_statement(void) {
   write_self(); // do
   compile_subroutine_call();
   write_self(); // ;
-  write_pop(S_CONST, "0");
+  write_pop(S_TEMP, "0"); // 捨てる
   write_to("</doStatement>\n");
 }
 
@@ -266,9 +303,9 @@ void compile_return_statement(void) {
     compile_expression();
   } else {
     write_push(S_CONST, "0");
-    write_return();
   }
   write_self(); // ;
+  write_return();
   write_to("</returnStatement>\n");
 }
 
@@ -276,8 +313,6 @@ void compile_let_statement(void) {
   printf("=====let statement=====\n");
   write_to("<letStatement>\n");
   char var_name[BUFFER] = { '\0' };
-  Kind kind;
-  char *index;
   write_self(); // let
   read_value_to(var_name); // var name
   if(next_check("[")) {
@@ -288,49 +323,85 @@ void compile_let_statement(void) {
   write_self(); // =
   compile_expression();
   write_self(); // ;
-  kind = kind_of(var_name);
-  sprintf(index, "%d", index_of(var_name));
-  switch(kind) {
-    case VAR:
-      write_pop(S_THIS, index);
-      break;
-  }
+  write_pop_name(var_name);
   write_to("</letStatement>\n");
 }
 
 void compile_statements(void);
 
+/**
+ * label L1
+ *  ~(cond)
+ *  if-goto L2
+ *  s1
+ *  goto L1
+ * label L2
+ */
 void compile_while_statement(void) {
+  char label_start_name[BUFFER];
+  char label_end_name[BUFFER];
+  sprintf(label_start_name, "WIHLE_EXP%d", while_label_index);
+  sprintf(label_end_name, "WHILE_END%d", while_label_index);
+  while_label_index += 1;
   printf("=====while statement=====\n");
   write_to("<whileStatement>\n");
   write_self(); // while
+  write_label(label_start_name); // label L1
   write_self(); // (
-  compile_expression();
+  compile_expression(); // cond
   write_self(); // )
+  write_arithmetic("~"); // 否定
+  write_if(label_end_name); // if-goto L2
   write_self(); // {
-  compile_statements();
+  compile_statements(); // s1
   write_self(); // }
+  write_goto(label_start_name); // goto L1
+  write_label(label_end_name);
   write_to("</whileStatement>\n");
 }
 
+/**
+ * (cond)
+ * if-goto TRUE
+ * goto FALSE
+ * label TRUE
+ * s1
+ * goto END
+ * label FALSE
+ *  s2
+ * label END
+ * */
 void compile_if_statement(void) {
+  char label_false_name[BUFFER];
+  char label_true_name[BUFFER];
+  char label_end_name[BUFFER];
+  sprintf(label_false_name, "IF_FALSE%d", if_label_index);
+  sprintf(label_true_name, "IF_TRUE%d", if_label_index);
+  sprintf(label_end_name, "IF_END%d", if_label_index);
+  if_label_index += 1;
   printf("=====if statement=====\n");
   write_to("<ifStatement>\n");
   write_self(); // if
   write_self(); // (
-  compile_expression();
+  compile_expression(); // cond
   write_self(); // )
+  write_if(label_true_name); // if-goto TRUE
+  write_goto(label_false_name); // if-goto FALSE
+  write_label(label_true_name); // label true
   write_self(); // {
-  compile_statements();
+  compile_statements(); // s1
   write_self(); // }
-if(next_check("else")) {
-  printf("else comming !!!");
-  write_self(); // else
-  write_self(); // {
-  compile_statements();
-  write_self(); // }
-}
-write_to("</ifStatement>\n");
+  write_goto(label_end_name); // goto END
+  write_label(label_false_name); // label false
+  if(next_check("else")) {
+    printf("else comming !!!");
+    write_self(); // else
+    write_self(); // {
+    compile_statements(); // s2
+    write_self(); // }
+  }
+  write_label(label_end_name); // label end
+  write_to("</ifStatement>\n");
 }
 
 void compile_statements(void) {
@@ -354,7 +425,8 @@ void compile_statements(void) {
   write_to("</statements>\n");
 }
 
-void compile_subroutine_body(void) {
+void compile_subroutine_body(char *subroutine_name) {
+  int var_dec_count = 0;
   printf("=====compile subroutine body=====\n");
   write_to("<subroutineBody>\n");
   write_self(); // {
@@ -362,8 +434,9 @@ void compile_subroutine_body(void) {
     char buf[BUFFER] = { '\0' };
     read_to(buf);
     if(strstr(buf, "var")) {
-      compile_var_dec(buf);
+      var_dec_count += compile_var_dec(buf);
     } else {
+      write_function(subroutine_name, var_dec_count);
       back(buf);
       compile_statements();
       break;
@@ -375,7 +448,6 @@ void compile_subroutine_body(void) {
 
 void compile_subroutine_dec(void) {
   char subroutine_name[BUFFER];
-  int param_count;
   startSubroutine();
   printf("=====subroutine dec=====\n");
   write_to("<subroutineDec>\n");
@@ -384,13 +456,12 @@ void compile_subroutine_dec(void) {
   read_value_to(subroutine_name);
   write_self(); // (
   if(next_check(")")) {
-    param_count = compile_parameter_list(0);
+    compile_parameter_list(0);
   } else {
-    param_count = compile_parameter_list(1);
+    compile_parameter_list(1);
   }
   write_self(); // )
-  write_function(subroutine_name, param_count);
-  compile_subroutine_body();
+  compile_subroutine_body(subroutine_name);
   write_to("</subroutineDec>\n");
 }
 

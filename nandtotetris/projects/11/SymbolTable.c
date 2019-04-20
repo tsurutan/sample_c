@@ -113,6 +113,7 @@ Kind convertKind(char *kind) {
 }
 
 void define(char *name, char *type, char *kind) {
+  printf("kind = %s\n", kind);
   Kind convertedKind = convertKind(kind);
 
   switch(convertedKind) {

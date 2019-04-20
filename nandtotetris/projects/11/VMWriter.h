@@ -16,3 +16,8 @@ void write_pop(Segment segment, char *index);
 void write_arithmetic(char *op);
 void write_call(char *name, int n_locals);
 void write_return();
+void write_label(char *label);
+void write_goto(char *label);
+void write_if(char *label);
+void write_push_name(char *name);
+void write_pop_name(char *name);

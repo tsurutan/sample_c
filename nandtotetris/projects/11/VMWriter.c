@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
 #include "VMWriter.h"
+#include "SymbolTable.h"
 
 #define BUFFER 512
 
@@ -16,12 +18,64 @@ void VMWriter__close(void) {
   fclose(fp_output);
 }
 
+void write_pop_name(char *name) {
+  char index[BUFFER];
+  Kind kind = kind_of(name);
+  sprintf(index, "%d", index_of(name));
+  switch(kind) {
+    case VAR:
+      write_pop(S_LOCAL, index);
+      break;
+    case ARG:
+      write_pop(S_ARG, index);
+      break;
+    case STATIC:
+      write_pop(S_STATIC, index);
+      break;
+    default:
+      printf("error: name = %s\n", name);
+      exit(2);
+      break;
+  }
+}
+
+void write_push_name(char *name) {
+  char index[BUFFER];
+  Kind kind = kind_of(name);
+  sprintf(index, "%d", index_of(name));
+  switch(kind) {
+    case VAR:
+      write_push(S_LOCAL, index);
+      break;
+    case ARG:
+      write_push(S_ARG, index);
+      break;
+    case STATIC:
+      write_push(S_STATIC, index);
+      break;
+    case NONE:
+      printf("error: name = %s kind = %d\n", name, kind);
+      exit(2);
+      break;
+  }
+}
+
 void write_push(Segment segment, char *index) {
   char output[BUFFER] = { '\0' };
+  int int_index;
   switch(segment) {
     case S_CONST:
-      sprintf(output, "push constant %s\n", index);
+      int_index = atoi(index);
+      int is_negative = 0;
+      if(int_index < 0) {
+        int_index *= -1;
+        is_negative = 1;
+      }
+      sprintf(output, "push constant %d\n", int_index);
       fwrite(output, strlen(output), 1, fp_output);
+      if(is_negative) {
+        write_arithmetic("neg");
+      }
       break;
     case S_ARG:
       sprintf(output, "push argument %s\n", index);
@@ -50,6 +104,9 @@ void write_push(Segment segment, char *index) {
     case S_TEMP:
       sprintf(output, "push temp %s\n", index);
       fwrite(output, strlen(output), 1, fp_output);
+      break;
+    default:
+      exit(1);
       break;
   }
 }
@@ -89,7 +146,28 @@ void write_pop(Segment segment, char *index) {
       sprintf(output, "pop temp %s\n", index);
       fwrite(output, strlen(output), 1, fp_output);
       break;
+    default:
+      exit(1);
+      break;
   }
+}
+
+void write_label(char *label) {
+  char output[BUFFER];
+  sprintf(output, "label %s\n", label);
+  fwrite(output, strlen(output), 1, fp_output);
+}
+
+void write_goto(char *label) {
+  char output[BUFFER];
+  sprintf(output, "goto %s\n", label);
+  fwrite(output, strlen(output), 1, fp_output);
+}
+
+void write_if(char *label) {
+  char output[BUFFER];
+  sprintf(output, "if-goto %s\n", label);
+  fwrite(output, strlen(output), 1, fp_output);
 }
 
 void write_return() {
@@ -106,9 +184,36 @@ void write_arithmetic(char *op) {
   if (strstr(op, "+") != NULL) {
     printf("add \n");
     fwrite("add\n", strlen("add\n"), 1, fp_output);
+  } else if (strstr(op, "-") != NULL) {
+    printf("sub \n");
+    fwrite("sub\n", strlen("sub\n"), 1, fp_output);
+  } else if (strstr(op, "=") != NULL) {
+    printf("eq \n");
+    fwrite("eq\n", strlen("eq\n"), 1, fp_output);
+  } else if (strstr(op, "neg") != NULL) {
+    printf("neg \n");
+    fwrite("neg\n", strlen("neg\n"), 1, fp_output);
+  } else if (strstr(op, "&gt;") != NULL) {
+    printf("gt \n");
+    fwrite("gt\n", strlen("gt\n"), 1, fp_output);
+  } else if (strstr(op, "&lt;") != NULL) {
+    printf("lt \n");
+    fwrite("lt\n", strlen("lt\n"), 1, fp_output);
+  } else if (strstr(op, "&amp;") != NULL) {
+    printf("and \n");
+    fwrite("and\n", strlen("and\n"), 1, fp_output);
+  } else if (strstr(op, "||") != NULL) {
+    printf("or \n");
+    fwrite("or\n", strlen("or\n"), 1, fp_output);
   } else if (strstr(op, "*") != NULL) {
     printf("mult \n");
     fwrite("call Math.multiply 2\n", strlen("call Math.multiply 2\n"), 1, fp_output);
+  } else if (strstr(op, "~") != NULL) {
+    printf("not \n");
+    fwrite("not\n", strlen("not\n"), 1, fp_output);
+  } else {
+    printf("arithmetic error: op = %s \n", op);
+    exit(1);
   }
 }
 

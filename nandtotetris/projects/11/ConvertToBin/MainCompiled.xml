@@ -62,7 +62,6 @@
 <expressionList>
 <expression>
 <term>
-<identifier>value</identifier>
 </term>
 </expression>
 </expressionList>
@@ -81,8 +80,6 @@
 <keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
-<keyword>int</keyword>
-<identifier>value</identifier>
 </parameterList>
 <symbol>)</symbol>
 <subroutineBody>
@@ -109,7 +106,6 @@
 <symbol>(</symbol>
 <expression>
 <term>
-<identifier>loop</identifier>
 </term>
 </expression>
 <symbol>)</symbol>
@@ -120,7 +116,6 @@
 <symbol>=</symbol>
 <expression>
 <term>
-<identifier>position</identifier>
 </term>
 <term>
 <integerConstant>1</integerConstant>
@@ -136,7 +131,6 @@
 <expressionList>
 <expression>
 <term>
-<identifier>mask</identifier>
 </term>
 </expression>
 </expressionList>
@@ -155,7 +149,6 @@
 <symbol>(</symbol>
 <expression>
 <term>
-<identifier>position</identifier>
 </term>
 <term>
 <integerConstant>16</integerConstant>
@@ -181,10 +174,8 @@
 <symbol>(</symbol>
 <expression>
 <term>
-<identifier>value</identifier>
 </term>
 <term>
-<identifier>mask</identifier>
 </term>
 </expression>
 <symbol>)</symbol>
@@ -208,7 +199,6 @@
 <integerConstant>8000</integerConstant>
 </term>
 <term>
-<identifier>position</identifier>
 </term>
 </expression>
 <symbol>,</symbol>
@@ -234,7 +224,6 @@
 <integerConstant>8000</integerConstant>
 </term>
 <term>
-<identifier>position</identifier>
 </term>
 </expression>
 <symbol>,</symbol>
@@ -283,8 +272,6 @@
 <keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
-<keyword>int</keyword>
-<identifier>mask</identifier>
 </parameterList>
 <symbol>)</symbol>
 <subroutineBody>
@@ -295,7 +282,6 @@
 <symbol>(</symbol>
 <expression>
 <term>
-<identifier>mask</identifier>
 </term>
 <term>
 <integerConstant>0</integerConstant>
@@ -322,7 +308,6 @@
 <keyword>return</keyword>
 <expression>
 <term>
-<identifier>mask</identifier>
 </term>
 <term>
 <integerConstant>2</integerConstant>
@@ -341,14 +326,8 @@
 <keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
-<keyword>int</keyword>
-<identifier>startAddress</identifier>
 <symbol>,</symbol>
-<keyword>int</keyword>
-<identifier>length</identifier>
 <symbol>,</symbol>
-<keyword>int</keyword>
-<identifier>value</identifier>
 </parameterList>
 <symbol>)</symbol>
 <subroutineBody>
@@ -359,7 +338,6 @@
 <symbol>(</symbol>
 <expression>
 <term>
-<identifier>length</identifier>
 </term>
 <term>
 <integerConstant>0</integerConstant>
@@ -373,13 +351,11 @@
 <expressionList>
 <expression>
 <term>
-<identifier>startAddress</identifier>
 </term>
 </expression>
 <symbol>,</symbol>
 <expression>
 <term>
-<identifier>value</identifier>
 </term>
 </expression>
 </expressionList>
@@ -391,7 +367,6 @@
 <symbol>=</symbol>
 <expression>
 <term>
-<identifier>length</identifier>
 </term>
 <term>
 <integerConstant>1</integerConstant>
@@ -404,7 +379,6 @@
 <symbol>=</symbol>
 <expression>
 <term>
-<identifier>startAddress</identifier>
 </term>
 <term>
 <integerConstant>1</integerConstant>
