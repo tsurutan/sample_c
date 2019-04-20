@@ -18,6 +18,20 @@ void VMWriter__close(void) {
   fclose(fp_output);
 }
 
+void write_string(char *value) {
+  char output_arg[BUFFER];
+  sprintf(output_arg, "%d", strlen(value));
+  write_push(S_CONST, output_arg);
+  fwrite("call String.new 1\n", strlen("call String.new 1\n"), 1, fp_output);
+  for(int i = 0; i < strlen(value); i++) {
+    char val = value[i];
+    char output[BUFFER];
+    sprintf(output, "%d", val);
+    write_push(S_CONST, output);
+  fwrite("call String.appendChar 2\n", strlen("call String.appendChar 2\n"), 1, fp_output);
+  }
+}
+
 void write_constructor(int class_index) {
   char output[BUFFER];
   sprintf(output, "push constant %d\n", class_index);
@@ -223,6 +237,9 @@ void write_arithmetic(char *op) {
   } else if (strstr(op, "*") != NULL) {
     printf("mult \n");
     fwrite("call Math.multiply 2\n", strlen("call Math.multiply 2\n"), 1, fp_output);
+  } else if (strstr(op, "/") != NULL) {
+    printf("divide \n");
+    fwrite("call Math.divide 2\n", strlen("call Math.multiply 2\n"), 1, fp_output);
   } else if (strstr(op, "~") != NULL) {
     printf("not \n");
     fwrite("not\n", strlen("not\n"), 1, fp_output);

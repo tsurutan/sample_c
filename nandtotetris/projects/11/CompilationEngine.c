@@ -231,10 +231,16 @@ void compile_term() {
     read_to(next);
     back(next);
     if(strstr(next, "[")) {
-      write_to(buf); // varName
+      back(buf);
+      char var_name[BUFFER];
+      read_value_to(var_name); // varName
+      write_push_name(var_name);
       write_self(); // [
       compile_expression();
       write_self(); // ]
+      write_arithmetic("+");
+      write_pop(S_POINTER, "0");
+      write_push(S_THAT, "0");
     } else if (strstr(next, "(") || strstr(next, ".")) {
       back(buf);
       compile_subroutine_call();
@@ -270,12 +276,15 @@ void compile_term() {
         write_push(S_CONST, "-1");
       } else if(strstr(constant_val, "false") || strstr(constant_val, "null")) {
         write_push(S_CONST, "0");
-
       } else if(strcmp(constant_val, "this") == 0) {
         write_push(S_POINTER, "0");
       } else {
         printf("kitayo = %s\n", constant_val);
-        write_push(S_CONST, constant_val);
+        if(strstr(buf, "stringConstant")) {
+          write_string(constant_val);
+        } else {
+          write_push(S_CONST, constant_val);
+        }
       }
       write_to(buf); // integerConstant or keywordConstant or symbolConstant
     }
@@ -336,18 +345,27 @@ void compile_return_statement(void) {
 void compile_let_statement(void) {
   printf("=====let statement=====\n");
   write_to("<letStatement>\n");
+  int is_array = 0;
   char var_name[BUFFER] = { '\0' };
   write_self(); // let
   read_value_to(var_name); // var name
   if(next_check("[")) {
+    write_push_name(var_name);
     write_self(); // [
     compile_expression();
     write_self(); // ]
+    write_arithmetic("+");
+    write_pop(S_POINTER, "1");
+    is_array = 1;
   }
   write_self(); // =
   compile_expression();
   write_self(); // ;
-  write_pop_name(var_name);
+  if(is_array) {
+    write_pop(S_THAT, "0");
+  } else {
+    write_pop_name(var_name);
+  }
   write_to("</letStatement>\n");
 }
 
@@ -463,7 +481,7 @@ void compile_subroutine_body(char *subroutine_name, char *subroutine_prefix) {
       write_function(subroutine_name, var_dec_count);
       if(strstr(subroutine_prefix, "constructor")) {
         write_constructor(get_class_index());
-      } else if(strcpy(subroutine_prefix, "method")) {
+      } else if(strcpy(subroutine_prefix, "method") == 0) {
         write_push(S_ARG, "0");
         write_pop(S_POINTER, "0");
       }
