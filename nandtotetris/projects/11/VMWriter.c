@@ -18,10 +18,19 @@ void VMWriter__close(void) {
   fclose(fp_output);
 }
 
+void write_constructor(int class_index) {
+  char output[BUFFER];
+  sprintf(output, "push constant %d\n", class_index);
+  fwrite(output, strlen(output), 1, fp_output);
+  fwrite("call Memory.alloc 1\n", strlen("call Memory.alloc 1\n"), 1, fp_output);
+  fwrite("pop pointer 0\n", strlen("pop pointer 0\n"), 1, fp_output);
+}
+
 void write_pop_name(char *name) {
   char index[BUFFER];
   Kind kind = kind_of(name);
   sprintf(index, "%d", index_of(name));
+  printf("pop: name = %s, kind = %d, index = %s FIELD = %d\n", name, kind, index, FIELD);
   switch(kind) {
     case VAR:
       write_pop(S_LOCAL, index);
@@ -31,6 +40,9 @@ void write_pop_name(char *name) {
       break;
     case STATIC:
       write_pop(S_STATIC, index);
+      break;
+    case FIELD:
+      write_pop(S_THIS, index);
       break;
     default:
       printf("error: name = %s\n", name);
@@ -49,6 +61,9 @@ void write_push_name(char *name) {
       break;
     case ARG:
       write_push(S_ARG, index);
+      break;
+    case FIELD:
+      write_push(S_THIS, index);
       break;
     case STATIC:
       write_push(S_STATIC, index);

@@ -21,3 +21,4 @@ void write_goto(char *label);
 void write_if(char *label);
 void write_push_name(char *name);
 void write_pop_name(char *name);
+void write_constructor(int class_index);

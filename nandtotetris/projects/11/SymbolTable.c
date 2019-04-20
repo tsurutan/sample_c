@@ -36,6 +36,9 @@ int argument_index = 0;
 int subroutine_index = 0;
 int class_index = 0;
 
+int get_class_index() {
+  return class_index;
+}
 void SymbolTable__constructor(void) {
 }
 
@@ -49,16 +52,22 @@ void startSubroutine(void) {
   subroutine_index = 0;
 }
 
+int exist_table(char *name) {
+  Kind kind = kind_of(name);
+  return kind == NONE ? 0 : 1;
+}
+
 Kind kind_of(char *name) {
   for(int i = 0; i < subroutine_index; i++) {
     Table table = subroutineHashTable.tables[i];
-    if(strstr(table.name, name)) {
+    printf("table name = %s === name = %s ========== \n", table.name, name);
+    if(strcmp(table.name, name) == 0) {
       return table.kind;
     }
   }
   for(int i = 0; i < class_index; i++) {
     Table table = classHashTable.tables[i];
-    if(strstr(table.name, name)) {
+    if(strcmp(table.name, name) == 0) {
       return table.kind;
     }
   }
@@ -84,7 +93,6 @@ int index_of(char *name) {
 void type_of(char *name, char *output) {
   for(int i = 0; i < subroutine_index; i++) {
     Table table = subroutineHashTable.tables[i];
-    printf("table name = %s\n", subroutineHashTable.tables[i].name);
     if(strstr(table.name, name)) {
       strcpy(output, table.type);
       return;
@@ -124,7 +132,7 @@ void define(char *name, char *type, char *kind) {
       strcpy(static_table.type, type);
       static_table.kind = convertedKind;
       static_table.index = static_index;
-      subroutineHashTable.tables[class_index] = static_table;
+      classHashTable.tables[class_index] = static_table;
       static_index++;
       class_index++;
       break;
@@ -135,7 +143,7 @@ void define(char *name, char *type, char *kind) {
       strcpy(field_table.type, type);
       field_table.kind = convertedKind;
       field_table.index = field_index;
-      subroutineHashTable.tables[class_index] = field_table;
+      classHashTable.tables[class_index] = field_table;
       field_index++;
       class_index++;
       break;

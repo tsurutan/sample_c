@@ -176,23 +176,44 @@ int compile_expression_list(int is_show) {
 void compile_subroutine_call() {
   printf("=====compile subroutine call=====\n");
   char function_name[BUFFER] = { '\0' };
+  int is_call_instance_method = 0;
+  int arg_count = 0;
+  int method_constitution_count = 0;
   while(1) {
     char buf[BUFFER] = { '\0' };
     read_value_to(buf);
     if(strstr(buf, "(") == NULL) {
-      sprintf(function_name, "%s%s", function_name, buf);
+      method_constitution_count += 1;
+      if(exist_table(buf)) {
+        char *instance_type[BUFFER] = { '\0' };
+        type_of(buf, instance_type);
+        write_push_name(buf);
+        sprintf(function_name, "%s%s", function_name, instance_type);
+        arg_count += 1;
+      } else {
+        sprintf(function_name, "%s%s", function_name, buf);
+      }
     } else {
+      if(method_constitution_count == 1) {
+        char temp_name[BUFFER];
+        strcpy(temp_name, function_name);
+        sprintf(function_name, "%s.%s", class_name, temp_name);
+        arg_count += 1;
+      }
       break;
     }
   }
   char next[BUFFER] = { '\0' };
-  int arg_count;
   read_to(next);
   back(next);
   if(strstr(next, ")")) {
-    arg_count = compile_expression_list(0);
+    arg_count += compile_expression_list(0);
   } else {
-    arg_count = compile_expression_list(1);
+    arg_count += compile_expression_list(1);
+  }
+  printf("arg count = %d\n", arg_count);
+  if(method_constitution_count == 1) {
+    write_push(S_POINTER, "0");
   }
   write_call(function_name, arg_count);
   write_self(); // )
@@ -249,6 +270,9 @@ void compile_term() {
         write_push(S_CONST, "-1");
       } else if(strstr(constant_val, "false") || strstr(constant_val, "null")) {
         write_push(S_CONST, "0");
+
+      } else if(strcmp(constant_val, "this") == 0) {
+        write_push(S_POINTER, "0");
       } else {
         printf("kitayo = %s\n", constant_val);
         write_push(S_CONST, constant_val);
@@ -425,7 +449,7 @@ void compile_statements(void) {
   write_to("</statements>\n");
 }
 
-void compile_subroutine_body(char *subroutine_name) {
+void compile_subroutine_body(char *subroutine_name, char *subroutine_prefix) {
   int var_dec_count = 0;
   printf("=====compile subroutine body=====\n");
   write_to("<subroutineBody>\n");
@@ -437,6 +461,12 @@ void compile_subroutine_body(char *subroutine_name) {
       var_dec_count += compile_var_dec(buf);
     } else {
       write_function(subroutine_name, var_dec_count);
+      if(strstr(subroutine_prefix, "constructor")) {
+        write_constructor(get_class_index());
+      } else if(strcpy(subroutine_prefix, "method")) {
+        write_push(S_ARG, "0");
+        write_pop(S_POINTER, "0");
+      }
       back(buf);
       compile_statements();
       break;
@@ -448,10 +478,11 @@ void compile_subroutine_body(char *subroutine_name) {
 
 void compile_subroutine_dec(void) {
   char subroutine_name[BUFFER];
+  char subroutine_prefix[BUFFER];
   startSubroutine();
   printf("=====subroutine dec=====\n");
   write_to("<subroutineDec>\n");
-  write_self(); // constructor or function or method
+  read_value_to(subroutine_prefix); // constructor or function or method
   read_value_to(subroutine_type); // void or type
   read_value_to(subroutine_name);
   write_self(); // (
@@ -461,7 +492,7 @@ void compile_subroutine_dec(void) {
     compile_parameter_list(1);
   }
   write_self(); // )
-  compile_subroutine_body(subroutine_name);
+  compile_subroutine_body(subroutine_name, subroutine_prefix);
   write_to("</subroutineDec>\n");
 }
 
