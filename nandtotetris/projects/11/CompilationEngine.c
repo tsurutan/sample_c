@@ -12,6 +12,7 @@ FILE *fp_output;
 
 char ops[OPS_SIZE][BUFFER] = { "+", "-", "*", ">/<", "&amp;", "|", "&lt;", "&gt;", "=" };
 
+char subroutine_type[BUFFER] = { '\0' };
 char class_name[BUFFER];
 void debug_print();
 void write_to(char *output) {
@@ -92,35 +93,43 @@ void compile_class_var_dec(void) {
   write_to("</classVarDec>\n");
 }
 
-void compile_parameter_list(int is_show) {
+int compile_parameter_list(int is_show) {
   printf("=====compile parameter list=====\n");
   write_to("<parameterList>\n");
+  int param_count = 0;
   if(is_show) {
     write_self(); // type
     write_self(); // varName
+    param_count += 1;
     while(1) {
       if(next_check(",")) {
         write_self(); // ,
         write_self(); // type
         write_self(); // varName
+        param_count += 1;
       } else {
         break;
       }
     }
   }
   write_to("</parameterList>\n");
+  return param_count;
 }
 
 void compile_var_dec(char *line) {
   printf("=====compile var dec=====\n");
+  char var_type[BUFFER] = { '\0' };
   write_to("<varDec>\n");
   write_to(line);
+  read_value_to(var_type);
   while(1) {
     char buf[BUFFER] = { '\0' };
-    read_to(buf);
-    write_to(buf);
+    read_value_to(buf);
     if(strstr(buf, ";")) {
       break;
+    }
+    if(strstr(buf, ",") == NULL) {
+      define(buf, var_type, "var");
     }
   }
   write_to("</varDec>\n");
@@ -128,15 +137,18 @@ void compile_var_dec(char *line) {
 
 void compile_expression(void);
 
-void compile_expression_list(int is_show) {
+int compile_expression_list(int is_show) {
+  int arg_count = 0;
   printf("=====compile expression list=====\n");
   write_to("<expressionList>\n");
   if(is_show) {
+    arg_count += 1;
     compile_expression();
     while(1) {
       char buf[BUFFER] = {'\0'};
       read_to(buf);
       if(strstr(buf, ",")) {
+        arg_count += 1;
         write_to(buf); // ,
         compile_expression();
       } else {
@@ -146,24 +158,31 @@ void compile_expression_list(int is_show) {
     }
   }
   write_to("</expressionList>\n");
+  return arg_count;
 }
 
 void compile_subroutine_call() {
   printf("=====compile subroutine call=====\n");
+  char function_name[BUFFER] = { '\0' };
   while(1) {
     char buf[BUFFER] = { '\0' };
-    read_to(buf);
-    write_to(buf);
-    if(strstr(buf, "(")) break;
+    read_value_to(buf);
+    if(strstr(buf, "(") == NULL) {
+      sprintf(function_name, "%s%s", function_name, buf);
+    } else {
+      break;
+    }
   }
   char next[BUFFER] = { '\0' };
+  int arg_count;
   read_to(next);
   back(next);
   if(strstr(next, ")")) {
-    compile_expression_list(0);
+    arg_count = compile_expression_list(0);
   } else {
-    compile_expression_list(1);
+    arg_count = compile_expression_list(1);
   }
+  write_call(function_name, arg_count);
   write_self(); // )
 }
 
@@ -196,6 +215,11 @@ void compile_term() {
       write_to(buf); // - or ~
       compile_term();
     } else {
+      char constant_val[BUFFER] = { '\0' };
+      back(buf);
+      read_value_to(constant_val);
+      printf("constant = %s\n", constant_val);
+      write_push(S_CONST, constant_val);
       write_to(buf); // integerConstant or keywordConstant or symbolConstant
     }
   }
@@ -207,17 +231,20 @@ void compile_expression(void) {
   printf("=====compile expression=====\n");
   write_to("<expression>\n");
   compile_term();
+  char op[BUFFER] = { '\0' };
   while(1) {
     char buf[BUFFER] = { '\0' };
     read_to(buf);
     back(buf);
     if(is_ops(buf)) {
-      write_self(); // op
+      read_value_to(op);
       compile_term();
     } else {
       break;
     }
   }
+  printf("op = %s\n", op);
+  write_arithmetic(op);
   write_to("</expression>\n");
 }
 
@@ -227,6 +254,7 @@ void compile_do_statement(void) {
   write_self(); // do
   compile_subroutine_call();
   write_self(); // ;
+  write_pop(S_CONST, "0");
   write_to("</doStatement>\n");
 }
 
@@ -236,6 +264,9 @@ void compile_return_statement(void) {
   write_self(); // return
   if(!next_check(";")) {
     compile_expression();
+  } else {
+    write_push(S_CONST, "0");
+    write_return();
   }
   write_self(); // ;
   write_to("</returnStatement>\n");
@@ -244,8 +275,11 @@ void compile_return_statement(void) {
 void compile_let_statement(void) {
   printf("=====let statement=====\n");
   write_to("<letStatement>\n");
+  char var_name[BUFFER] = { '\0' };
+  Kind kind;
+  char *index;
   write_self(); // let
-  write_self(); // varName
+  read_value_to(var_name); // var name
   if(next_check("[")) {
     write_self(); // [
     compile_expression();
@@ -254,6 +288,13 @@ void compile_let_statement(void) {
   write_self(); // =
   compile_expression();
   write_self(); // ;
+  kind = kind_of(var_name);
+  sprintf(index, "%d", index_of(var_name));
+  switch(kind) {
+    case VAR:
+      write_pop(S_THIS, index);
+      break;
+  }
   write_to("</letStatement>\n");
 }
 
@@ -333,18 +374,22 @@ void compile_subroutine_body(void) {
 }
 
 void compile_subroutine_dec(void) {
+  char subroutine_name[BUFFER];
+  int param_count;
+  startSubroutine();
   printf("=====subroutine dec=====\n");
   write_to("<subroutineDec>\n");
   write_self(); // constructor or function or method
-  write_self(); // void or type
-  write_self(); // subroutineName
+  read_value_to(subroutine_type); // void or type
+  read_value_to(subroutine_name);
   write_self(); // (
   if(next_check(")")) {
-    compile_parameter_list(0);
+    param_count = compile_parameter_list(0);
   } else {
-    compile_parameter_list(1);
+    param_count = compile_parameter_list(1);
   }
   write_self(); // )
+  write_function(subroutine_name, param_count);
   compile_subroutine_body();
   write_to("</subroutineDec>\n");
 }

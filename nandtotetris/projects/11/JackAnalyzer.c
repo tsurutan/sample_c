@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
   CompilationEngine_constructor(fp_compile_input, fp_compile_output);
   fclose(fp_compile_input);
   fclose(fp_compile_output);
+  VMWriter__close();
 }
 
 void set_filename(char *path, char *output, char *suffix) {
