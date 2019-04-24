@@ -199,6 +199,7 @@ void compile_subroutine_call() {
         strcpy(temp_name, function_name);
         sprintf(function_name, "%s.%s", class_name, temp_name);
         arg_count += 1;
+        write_push(S_POINTER, "0");
       }
       break;
     }
@@ -212,9 +213,6 @@ void compile_subroutine_call() {
     arg_count += compile_expression_list(1);
   }
   printf("arg count = %d\n", arg_count);
-  if(method_constitution_count == 1) {
-    write_push(S_POINTER, "0");
-  }
   write_call(function_name, arg_count);
   write_self(); // )
 }
@@ -481,7 +479,8 @@ void compile_subroutine_body(char *subroutine_name, char *subroutine_prefix) {
       write_function(subroutine_name, var_dec_count);
       if(strstr(subroutine_prefix, "constructor")) {
         write_constructor(get_class_index());
-      } else if(strcpy(subroutine_prefix, "method") == 0) {
+      } else if(strcmp(subroutine_prefix, "method") == 0) {
+        define("this", class_name, "argument");
         write_push(S_ARG, "0");
         write_pop(S_POINTER, "0");
       }
@@ -501,6 +500,9 @@ void compile_subroutine_dec(void) {
   printf("=====subroutine dec=====\n");
   write_to("<subroutineDec>\n");
   read_value_to(subroutine_prefix); // constructor or function or method
+  if(strcmp(subroutine_prefix, "method") == 0) {
+    define("this", class_name, "argument");
+  }
   read_value_to(subroutine_type); // void or type
   read_value_to(subroutine_name);
   write_self(); // (

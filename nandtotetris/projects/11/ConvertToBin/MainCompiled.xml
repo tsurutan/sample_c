@@ -2,7 +2,6 @@
 <keyword>class</keyword>
 <symbol>{</symbol>
 <subroutineDec>
-<keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
 </parameterList>
@@ -77,7 +76,6 @@
 </subroutineBody>
 </subroutineDec>
 <subroutineDec>
-<keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
 </parameterList>
@@ -269,7 +267,6 @@
 </subroutineBody>
 </subroutineDec>
 <subroutineDec>
-<keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
 </parameterList>
@@ -323,7 +320,6 @@
 </subroutineBody>
 </subroutineDec>
 <subroutineDec>
-<keyword>function</keyword>
 <symbol>(</symbol>
 <parameterList>
 <symbol>,</symbol>

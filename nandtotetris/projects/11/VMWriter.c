@@ -231,7 +231,7 @@ void write_arithmetic(char *op) {
   } else if (strstr(op, "&amp;") != NULL) {
     printf("and \n");
     fwrite("and\n", strlen("and\n"), 1, fp_output);
-  } else if (strstr(op, "||") != NULL) {
+  } else if (strstr(op, "|") != NULL) {
     printf("or \n");
     fwrite("or\n", strlen("or\n"), 1, fp_output);
   } else if (strstr(op, "*") != NULL) {
