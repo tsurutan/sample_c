@@ -237,7 +237,8 @@ void compile_term() {
       compile_expression();
       write_self(); // ]
       write_arithmetic("+");
-      write_pop(S_POINTER, "0");
+      printf("===========================kitayo2==================== var name = %s\n", var_name);
+      write_pop(S_POINTER, "1");
       write_push(S_THAT, "0");
     } else if (strstr(next, "(") || strstr(next, ".")) {
       back(buf);
@@ -348,18 +349,21 @@ void compile_let_statement(void) {
   write_self(); // let
   read_value_to(var_name); // var name
   if(next_check("[")) {
-    write_push_name(var_name);
     write_self(); // [
     compile_expression();
     write_self(); // ]
+    write_push_name(var_name);
+    printf("===========================kitayo1==================== var name = %s\n", var_name);
     write_arithmetic("+");
-    write_pop(S_POINTER, "1");
     is_array = 1;
   }
   write_self(); // =
   compile_expression();
   write_self(); // ;
   if(is_array) {
+    write_pop(S_TEMP, "1");
+    write_pop(S_POINTER, "1");
+    write_push(S_TEMP, "1");
     write_pop(S_THAT, "0");
   } else {
     write_pop_name(var_name);
