@@ -1,0 +1,115 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/Math.jack
+
+/**
+ * A library of commonly used mathematical functions.
+ * Note: Jack compilers implement multiplication and division using OS method calls.
+ */
+class Math {
+
+    /** Initializes the library. */
+    function void init() {
+      return;
+    }
+
+    /** Returns the absolute value of x. */
+    function int abs(int x) {
+      if(x < 0) {
+        return -1 * x;
+      } else {
+        return x;
+      }
+    }
+
+    /** Returns the product of x and y. 
+     *  When a Jack compiler detects the multiplication operator '*' in the 
+     *  program's code, it handles it by invoking this method. In other words,
+     *  the Jack expressions x*y and multiply(x,y) return the same value.
+     */
+    function int multiply(int x, int y) {
+      var int shiftedX, tmpN, mask;
+      var int result;
+      let shiftedX = x;
+      let tmpN = 0;
+      let result = 0;
+      let mask = 1;
+
+      while(tmpN < 16) {
+        if(y & mask) {
+          let result = result + shiftedX;
+        }
+        let shiftedX = shiftedX + shiftedX;
+        let tmpN = tmpN + 1;
+        let mask = mask + mask;
+      }
+      return result;
+    }
+
+    /** Returns the integer part of x/y.
+     *  When a Jack compiler detects the multiplication operator '/' in the 
+     *  program's code, it handles it by invoking this method. In other words,
+     *  the Jack expressions x/y and divide(x,y) return the same value.
+     */
+    function int divide(int x, int y) {
+      var int q, tmpX, tmpY, isXNegative, isYNegative;
+      let tmpX = Math.abs(x);
+      let tmpY = Math.abs(y);
+      if(x < 0) {
+        let isXNegative = -1;
+      } else {
+        let isXNegative = 1;
+      }
+      if(y < 0) {
+        let isYNegative = -1;
+      } else {
+        let isYNegative = 1;
+      }
+      if(tmpY > tmpX) {
+        return 0;
+      } else {
+        let q = tmpX / (2 * tmpY);
+        if((tmpX - (2 * q * tmpY)) < tmpY) {
+          return 2 * q * isXNegative * isYNegative;
+        } else {
+          return (2 * q + 1) * isXNegative * isYNegative;
+        }
+      }
+    }
+
+    /** Returns the integer part of the square root of x. */
+    function int sqrt(int x) {
+      var int y, n, absX, base;
+      let y = 0;
+      let n = 8;
+      let base = 128;
+      let absX = Math.abs(x);
+      while(n > 0) {
+        if(((y + base) * (y + base) > 0) & (((y + base) * (y + base) < absX) | ((y + base) * (y + base) = absX))) {
+          let y = y + base;
+        }
+        let n = n - 1;
+        let base = base / 2;
+      }
+      return y;
+    }
+
+    /** Returns the greater number. */
+    function int max(int a, int b) {
+      if(a > b) {
+        return a;
+      } else {
+        return b;
+      }
+    }
+
+    /** Returns the smaller number. */
+    function int min(int a, int b) {
+      if(a > b) {
+        return b;
+      } else {
+        return a;
+      }
+    }
+}
