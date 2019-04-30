@@ -11,54 +11,131 @@
  * string-oriented operations.
  */
 class String {
+  field int currentLength;
+  field Array array;
 
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
+      if(maxLength = 0) {
+        return this;
+      }
+      let currentLength = 0;
+      let array = Array.new(maxLength);
+      return this;
     }
 
     /** Disposes this string. */
     method void dispose() {
+      do Memory.deAlloc(this);
+      return;
     }
 
     /** Returns the current length of this string. */
     method int length() {
+      return currentLength;
     }
 
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
+      return array[j];
     }
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
+      let array[j] = c;
+      return;
     }
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
+      let array[currentLength] = c;
+      let currentLength = currentLength + 1;
+      return this;
     }
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
+      let array[currentLength] = 0;
+      let currentLength = currentLength - 1;
+      return;
     }
 
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
+      var int base_decimal, sum, index, tmp_index, is_negative;
+      let base_decimal = 1;
+      let index = 0;
+      let tmp_index = 0;
+      let is_negative = 0;
+      while(tmp_index < (currentLength - 1)) {
+        if(array[tmp_index] = 45) {
+          let is_negative = 1;
+        } else {
+          let base_decimal = 10 * base_decimal;
+        }
+        let tmp_index = tmp_index + 1;
+      }
+      while(index < currentLength) {
+        if(array[index] = 45) {
+
+        } else {
+          let sum = sum + ((array[index] - 48) * base_decimal);
+          let base_decimal = base_decimal / 10;
+        }
+        let index = index + 1;
+      }
+      if(is_negative = 1) {
+        let sum = sum * -1;
+      }
+      return sum;
     }
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
+      do reset();
+      if(val < 0) {
+        do setCharAt(0, 45);
+        let currentLength = currentLength + 1;
+        do intToString(Math.abs(val), 1);
+      } else {
+        do intToString(val, 0);
+      }
+      return;
+    }
+
+    method String intToString(int val, int startPosition) {
+      var int lastDigit;
+      var String stringVal;
+      let lastDigit = val - ((val / 10) * 10);
+      if(val < 10) {
+        do setCharAt(startPosition, lastDigit + 48);
+        let currentLength = currentLength + 1;
+        return this;
+      } else {
+        let stringVal = intToString(val / 10, startPosition);
+        return stringVal.appendChar(lastDigit + 48);
+      }
+    }
+
+    method void reset() {
+      let currentLength = 0;
+      return;
     }
 
     /** Returns the new line character. */
     function char newLine() {
+      return 128;
     }
 
     /** Returns the backspace character. */
     function char backSpace() {
+      return 129;
     }
 
     /** Returns the double quote (") character. */
     function char doubleQuote() {
+      return 34;
     }
 }
