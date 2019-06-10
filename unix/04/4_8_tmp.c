@@ -12,7 +12,7 @@ typedef int Myfunc(const char *, const struct stat *, int);
 
 static Myfunc myfunc;
 static int myftw(char *, Myfunc *);
-static int dopath(Myfunc *);
+static int dopath(Myfunc *, char *);
 
 static long nreg, ndir, nblk, nchr, nfifo, nslink, nsock, ntot;
 
@@ -49,43 +49,44 @@ static char *fullpath;
 
 static int myftw(char *pathname, Myfunc *func) {
   fullpath = path_alloc(NULL);
-  strcpy(fullpath, pathname);
-  return(dopath(func));
+  /* strcpy(fullpath, pathname); */
+  return(dopath(func, pathname));
 }
 
-static int dopath(Myfunc* func) {
+static int dopath(Myfunc* func, char *pathname) {
   struct stat statbuf;
   struct dirent *dirp;
   DIR *dp;
   int ret;
   char *ptr;
 
-  if(lstat(fullpath, &statbuf) < 0) {
-    return(func(fullpath, &statbuf, FTW_NS));
+  if(lstat(pathname, &statbuf) < 0) {
+    return(func(pathname, &statbuf, FTW_NS));
   }
 
   if(S_ISDIR(statbuf.st_mode) == 0) {
-    return (func(fullpath, &statbuf, FTW_F));
+    return (func(pathname, &statbuf, FTW_F));
   }
 
-  if((ret = func(fullpath, &statbuf, FTW_D)) != 0) {
+  if((ret = func(pathname, &statbuf, FTW_D)) != 0) {
     return(ret);
   }
 
-  ptr = fullpath + strlen(fullpath);
-  *ptr++ = '/';
-  *ptr = 0;
+  chdir(pathname);
 
-  if((dp = opendir(fullpath)) == NULL) {
-    return(func(fullpath, &statbuf, FTW_DNR));
+  write(1, "==========\n", strlen("==========\n"));
+  write(1, pathname, strlen(pathname));
+  if((dp = opendir(".")) == NULL) {
+    return(func(pathname, &statbuf, FTW_DNR));
   }
 
   while((dirp = readdir(dp)) != NULL) {
     if(strcmp(dirp->d_name, ".") == 0 || strcmp(dirp->d_name, "..") == 0) { continue; }
-    strcpy(ptr, dirp->d_name);
-    if((ret=dopath(func)) != 0) { break; }
+    write(1, dirp->d_name, strlen(dirp->d_name));
+    write(1, "\n", strlen("\n"));
+    if((ret=dopath(func, dirp->d_name)) != 0) { break; }
   }
-  ptr[-1] = 0;
+  chdir("..");
   if(closedir(dp) < 0) {
     printf("error colose dir");
     exit(1);
@@ -109,7 +110,6 @@ static int myfunc(const char *pathname, const struct stat *statptr, int type) {
                        break;
       }
     case FTW_D:
-      printf("directory = %s\n", pathname);
       ndir++;
       break;
     case FTW_DNR:
